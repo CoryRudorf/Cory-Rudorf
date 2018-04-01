@@ -21,7 +21,6 @@ class DataFrameSelector(BaseEstimator, TransformerMixin):
 
 def build_num_pipeline(selector=None, imputer=None,std_scaler=None):
     steps = []
-    pipeline_dict = {}
     if selector is not None:
         steps.append(('selector', selector))
     if imputer is not None:
@@ -29,15 +28,12 @@ def build_num_pipeline(selector=None, imputer=None,std_scaler=None):
     if std_scaler is not None:
         steps.append(('std_scaler', std_scaler))
 
-    return steps
-    # num_pipeline = Pipeline([
-    #     ('selector', DataFrameSelector(selector)),
-    #     ('imputer', Imputer(strategy="median")),
-    #     ('attribs_adder', CombinedAttributesAdder()),
-    #     ('std_scaler', StandardScaler())])
+    num_pipeline = Pipeline(steps)
+
+    return num_pipeline
 
 
-test_list = (build_num_pipeline(selector='Test1', imputer='Test2', std_scaler='Test3'))
-
-print(test_list[0][1])
-
+def predict_regression_model(model, dataset, labels):
+    model_reg = model.fit(dataset, labels)
+    model_predictions = model_reg.predict(dataset)
+    return model_predictions

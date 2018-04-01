@@ -314,23 +314,73 @@ cat_attribs = ["ocean_proximity"]
 
 new_df = housing[cat_attribs]
 #print(new_df)
-num_pipeline = Pipeline([
-    ('selector', DataFrameSelector(num_attribs)),
-    ('imputer', Imputer(strategy="median")),
-    ('attribs_adder', CombinedAttributesAdder()),
-    ('std_scaler', StandardScaler())])
+# num_pipeline = Pipeline([
+#     ('selector', DataFrameSelector(num_attribs)),
+#     ('imputer', Imputer(strategy="median")),
+#     ('attribs_adder', CombinedAttributesAdder()),
+#     ('std_scaler', StandardScaler())
+# ])
 cat_pipeline = Pipeline([
     ('selector', DataFrameSelector(cat_attribs)),
      ('cat_encoder', CategoricalEncoder(encoding="onehot-dense"))])
-# ---Combining Pipelines with sklearn class FeatureUnion
-# Give a list of transformers or pipelines.
+# # ---Combining Pipelines with sklearn class FeatureUnion
+# # Give a list of transformers or pipelines.
 from sklearn.pipeline import FeatureUnion
+#
+# full_pipeline = FeatureUnion(transformer_list=[
+#     ("num_pipeline", num_pipeline),
+#     ("cat_pipeline", cat_pipeline)
+# ])
+# # Run entire pipeline:
+# housing_prepared = full_pipeline.fit_transform(housing)
+# from sklearn.linear_model import LinearRegression
+#
+# lin_reg = LinearRegression()
+# lin_reg.fit(housing_prepared, housing_labels)
+#
+# some_data = housing.iloc[:5]
+# some_labels = housing_labels.iloc[:5]
+# some_data_prepared = full_pipeline.transform(some_data)
+# #print("Predictions:", lin_reg.predict(some_data_prepared))
+# #print("Predictions:", list(some_labels))
+#
+from sklearn.metrics import mean_squared_error
+# housing_predictions = lin_reg.predict(housing_prepared)
+# lin_mse = mean_squared_error(housing_labels, housing_predictions)
+# lin_rmse = np.sqrt(lin_mse)
+#print(lin_rmse)
+
+
+def build_num_pipeline(selector=None, imputer=None,std_scaler=None):
+    steps = []
+    if selector is not None:
+        steps.append(('selector', selector))
+    if imputer is not None:
+        steps.append(('imputer', imputer))
+    if std_scaler is not None:
+        steps.append(('std_scaler', std_scaler))
+
+    num_pipeline = Pipeline(steps)
+
+    return num_pipeline
+
+
+test = build_num_pipeline(selector=DataFrameSelector(num_attribs), imputer=Imputer(strategy="median"),
+                          std_scaler=StandardScaler())
+print(test)
 
 full_pipeline = FeatureUnion(transformer_list=[
-    ("num_pipeline", num_pipeline),
+    ("num_pipeline", test),
     ("cat_pipeline", cat_pipeline)
 ])
-# Run entire pipeline:
+
+# num_pipeline = Pipeline([
+#     ('selector', DataFrameSelector(num_attribs)),
+#     ('imputer', Imputer(strategy="median")),
+#     ('attribs_adder', CombinedAttributesAdder()),
+#     ('std_scaler', StandardScaler())
+# ])
+
 housing_prepared = full_pipeline.fit_transform(housing)
 from sklearn.linear_model import LinearRegression
 
@@ -340,11 +390,39 @@ lin_reg.fit(housing_prepared, housing_labels)
 some_data = housing.iloc[:5]
 some_labels = housing_labels.iloc[:5]
 some_data_prepared = full_pipeline.transform(some_data)
-print("Predictions:", lin_reg.predict(some_data_prepared))
-print("Predictions:", list(some_labels))
+# print("Predictions:", lin_reg.predict(some_data_prepared))
+# print("Predictions:", list(some_labels))
+from sklearn.tree import DecisionTreeRegressor
 
-from sklearn.metrics import mean_squared_error
-housing_predictions = lin_reg.predict(housing_prepared)
-lin_mse = mean_squared_error(housing_labels, housing_predictions)
-lin_rmse = np.sqrt(lin_mse)
-print(lin_rmse)
+tree_reg = DecisionTreeRegressor()
+tree_reg.fit(housing_prepared, housing_labels)
+housing_predictions = tree_reg.predict(housing_prepared)
+tree_mse = mean_squared_error(housing_labels, housing_predictions)
+tree_rmse = np.sqrt(tree_mse)
+
+from sklearn.model_selection import cross_val_score
+scores = cross_val_score(tree_reg, housing_prepared, housing_labels, scoring="neg_mean_squared_error", cv=10)
+tree_rmse_scores = np.sqrt(-scores)
+
+def display_scores(scores):
+    print("Scores:", scores)
+    print("Mean:", scores.mean())
+    print("Std Dev:", scores.std())
+
+from sklearn.ensemble import RandomForestRegressor
+forest_reg = RandomForestRegressor()
+forest_reg.fit(housing_prepared, housing_labels)
+housing_predictions = forest_reg.predict(housing_prepared)
+
+def calculate_rmse(predictions, dataset_labels):
+    mse = mean_squared_error(dataset_labels, predictions)
+    rmse = np.sqrt(mse)
+    return rmse
+
+forest_rmse = calculate_rmse(housing_predictions, housing_labels)
+#print(forest_rmse)
+
+scores = cross_val_score(forest_reg, housing_prepared, housing_labels, scoring="neg_mean_squared_error", cv=10)
+forest_rmse_scores = np.sqrt(-scores)
+
+display_scores(forest_rmse_scores)
